@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>교실 랜덤 추첨기</title>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+    :root{
+      --pink-50:#fff1f7;
+      --pink-100:#ffe4ef;
+      --pink-200:#ffc7de;
+      --pink-300:#ff9fcb;
+      --pink-500:#ff4d9d;
+      --pink-700:#d81b76;
+      --pink-900:#7a1647;
+      --fuchsia-700:#a21caf;
+      --bg:#f8b4d9;
+      --shadow: 0 24px 80px rgba(0,0,0,.14);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: linear-gradient(180deg, #f9b7dc 0%, #f6a8cf 50%, #f8b4d9 100%);
+      color:var(--pink-900);
+      overflow-x:hidden;
+    }
+    .app{
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 18px;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+      position:relative;
+    }
+    .hero, .panel, .winner-box, .history-box, .pool-box, .modal-card, .badge, .mini-card{
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+    .hero{
+      background: rgba(255,255,255,.74);
+      padding: 24px;
+    }
+    .hero-top{
+      display:flex;
+      justify-content:space-between;
+      gap:18px;
+      align-items:flex-end;
+      flex-wrap:wrap;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      background: var(--pink-500);
+      color:white;
+      padding:10px 16px;
+      border-radius:999px;
+      font-weight:900;
+      box-shadow: 0 10px 20px rgba(255,77,157,.24);
+    }
+    h1{
+      margin:10px 0 0;
+      font-size: clamp(34px, 4.8vw, 68px);
+      line-height:1;
+      letter-spacing:-.04em;
+    }
+    .sub{
+      margin-top:10px;
+      font-size: clamp(18px, 2vw, 28px);
+      font-weight:700;
+      opacity:.8;
+    }
+    .stats{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+      gap:12px;
+      min-width: 320px;
+    }
+    .stat{
+      background: var(--pink-100);
+      padding:16px;
+      text-align:center;
+    }
+    .stat .label{font-size:14px;font-weight:900;color:var(--pink-700)}
+    .stat .num{font-size:42px;font-weight:900;line-height:1.1;margin-top:4px}
+    .layout{
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap:18px;
+      flex:1;
+      min-height:0;
+    }
+    .panel{
+      background: rgba(255,255,255,.78);
+      padding: 22px;
+      min-height:0;
+    }
+    .section-title{
+      font-size: 21px;
+      font-weight: 900;
+      margin:0 0 12px;
+    }
+    .textarea{
+      width:100%;
+      min-height: 180px;
+      resize: vertical;
+      border:4px solid var(--pink-200);
+      border-radius: 24px;
+      padding:18px;
+      font: inherit;
+      font-size: 22px;
+      font-weight: 700;
+      outline:none;
+      background: var(--pink-50);
+      color: var(--pink-900);
+      line-height:1.5;
+    }
+    .textarea:focus{border-color:var(--pink-500)}
+    .actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      margin-top:14px;
+    }
+    .btn{
+      appearance:none;
+      border:none;
+      border-radius:999px;
+      padding:14px 20px;
+      font-size:20px;
+      font-weight:900;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      box-shadow: 0 14px 28px rgba(0,0,0,.12);
+      transition:.16s transform, .16s opacity, .16s filter;
+      user-select:none;
+    }
+    .btn:hover{transform:scale(1.02)}
+    .btn:active{transform:scale(.98)}
+    .btn.primary{background:var(--pink-500);color:#fff}
+    .btn.secondary{background:#fff;color:var(--pink-700);outline:4px solid var(--pink-200)}
+    .btn.danger{background: #fff; color: var(--pink-700); outline: 4px solid var(--pink-200);}
+    .btn.gray{background:#fff;color:#444}
+    .btn.rose{background:#be185d;color:#fff}
+    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+    .menu{
+      display:none;
+      background: var(--pink-50);
+      border-radius: 24px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,.04);
+    }
+    .menu.open{display:block; animation: pop .18s ease-out}
+    @keyframes pop{from{opacity:0;transform:translateY(-8px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)}}
+    .row{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .tiny{
+      font-size:13px;
+      font-weight:800;
+      opacity:.75;
+    }
+    .file-chip{
+      background:#fff;
+      border-radius:999px;
+      padding:10px 14px;
+      box-shadow: 0 8px 16px rgba(0,0,0,.08);
+      font-weight:800;
+      font-size:14px;
+    }
+    .hidden{display:none !important}
+    .preview{
+      background: linear-gradient(135deg, #ffb3d4, #ffd6e8, #ffeef6);
+      border-radius: 24px;
+      min-height: 280px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding: 18px;
+      box-shadow: inset 0 2px 18px rgba(255,255,255,.55);
+      position:relative;
+      overflow:hidden;
+    }
+    .preview.spin{
+      animation: glow .9s ease-in-out infinite;
+    }
+    @keyframes glow{
+      0%,100%{transform:scale(1); filter: drop-shadow(0 0 0 rgba(255,255,255,0))}
+      50%{transform:scale(1.02); filter: drop-shadow(0 0 18px rgba(255,255,255,.4))}
+    }
+    .name{
+      font-size: clamp(54px, 8vw, 112px);
+      font-weight: 900;
+      line-height: .9;
+      letter-spacing:-.05em;
+      color: var(--pink-900);
+      text-shadow: 0 4px 12px rgba(0,0,0,.08);
+      word-break: keep-all;
+    }
+    .winner-pill{
+      margin-top: 14px;
+      background: #fff;
+      padding: 14px 18px;
+      border-radius: 18px;
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--fuchsia-700);
+      box-shadow: 0 10px 24px rgba(0,0,0,.08);
+    }
+    .side{
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+    }
+    .history-box, .pool-box{
+      background: rgba(255,255,255,.78);
+      padding: 18px;
+    }
+    .list{
+      display:grid;
+      gap:10px;
+      margin:0;
+      padding:0;
+      list-style:none;
+      max-height: 280px;
+      overflow:auto;
+    }
+    .list-item{
+      background:#fff;
+      border-radius: 18px;
+      padding: 14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      font-size:20px;
+      font-weight:900;
+      box-shadow: 0 8px 16px rgba(0,0,0,.06);
+    }
+    .rank{
+      background: var(--pink-200);
+      color: var(--pink-900);
+      border-radius:999px;
+      padding: 6px 12px;
+      font-size:14px;
+      font-weight:900;
+      flex:0 0 auto;
+    }
+    .pool{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      max-height: 220px;
+      overflow:auto;
+    }
+    .chip{
+      background:#fff;
+      border-radius:999px;
+      padding: 10px 14px;
+      font-size:18px;
+      font-weight:900;
+      box-shadow: 0 6px 12px rgba(0,0,0,.07);
+    }
+    .overlay, .flash, .confetti{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:9999;
+    }
+    .flash{z-index:9998;background:rgba(255,255,255,.96); animation: flash .55s ease-out forwards;}
+    @keyframes flash{0%{opacity:0}20%{opacity:1}100%{opacity:0}}
+    .overlay{
+      z-index:9997;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(0,0,0,.18);
+      backdrop-filter: blur(3px);
+    }
+    .count-card{
+      background:#fff;
+      padding: 24px 40px;
+      border-radius: 999px;
+      text-align:center;
+      box-shadow: 0 24px 80px rgba(0,0,0,.25);
+    }
+    .count-label{
+      font-size:14px;
+      font-weight:900;
+      letter-spacing:.32em;
+      color: var(--pink-500);
+      text-transform:uppercase;
+    }
+    .count{
+      font-size: clamp(68px, 10vw, 140px);
+      font-weight:900;
+      color: var(--fuchsia-700);
+      line-height:1;
+      margin-top:4px;
+    }
+    .tv{
+      position:fixed;
+      right:16px;
+      top:16px;
+      z-index:50;
+      background:rgba(255,255,255,.8);
+      padding:10px 14px;
+      border-radius:999px;
+      font-weight:900;
+      font-size:13px;
+      box-shadow:0 10px 20px rgba(0,0,0,.12);
+    }
+    .confetti .piece{
+      position:absolute;
+      width: 10px;
+      height: 16px;
+      border-radius: 3px;
+      box-shadow:0 0 18px rgba(255,255,255,.75);
+      animation: fall var(--dur) ease-out var(--delay) forwards;
+      left: var(--left);
+      top: var(--top);
+      background: var(--color);
+      transform: translateY(-50%) rotate(var(--rot));
+    }
+    @keyframes fall{
+      0% { transform: translateY(-20%) translateX(0) rotate(0deg); opacity:1; }
+      100% { transform: translateY(230vh) translateX(var(--drift)) rotate(1080deg); opacity:0; }
+    }
+    .winner-fullscreen{
+      position:fixed;
+      inset:0;
+      z-index:9996;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(180deg, rgba(255,77,157,.96), rgba(216,27,118,.96));
+      color:#fff;
+      text-align:center;
+      padding:24px;
+    }
+    .winner-fullscreen.show{display:flex}
+    .winner-big{
+      font-size: clamp(64px, 10vw, 170px);
+      font-weight:900;
+      line-height:.9;
+      text-shadow: 0 8px 20px rgba(0,0,0,.25);
+      word-break: keep-all;
+    }
+    .winner-title{
+      font-size: clamp(22px, 3vw, 42px);
+      font-weight:900;
+      margin-bottom: 18px;
+    }
+    .winner-frame{
+      padding: 24px 18px;
+      border-radius: 32px;
+      border: 6px solid rgba(255,255,255,.8);
+      background: rgba(255,255,255,.08);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.12);
+    }
+    .vertical {
+      white-space: pre-line;
+      line-height: .95;
+      display:inline-block;
+      text-align:center;
+    }
+    .top-right{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .full-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      background:#fff;
+      color:var(--pink-700);
+      border:none;
+      outline:4px solid var(--pink-200);
+      border-radius:999px;
+      padding:14px 18px;
+      font-size:18px;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow: 0 14px 28px rgba(0,0,0,.12);
+    }
+    .full-btn:hover{transform:scale(1.02)}
+    .foot-grid{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:12px;
+    }
+    .mini-card{
+      background:rgba(255,255,255,.85);
+      padding:16px;
+    }
+    .mini-card .n{font-size:18px;font-weight:900;color:var(--pink-700)}
+    .mini-card p{margin:6px 0 0;font-size:14px;font-weight:700;opacity:.75;line-height:1.4}
+    @media (max-width: 1080px){
+      .layout{grid-template-columns:1fr}
+      .stats{min-width:0}
+      .foot-grid{grid-template-columns:1fr 1fr}
+    }
+    @media (max-width: 640px){
+      .app{padding:12px}
+      .hero,.panel,.history-box,.pool-box{padding:16px}
+      .textarea{font-size:18px}
+      .btn,.full-btn{font-size:16px}
+      .stats{grid-template-columns:1fr 1fr}
+      .foot-grid{grid-template-columns:1fr}
+      .winner-big{font-size: clamp(50px, 18vw, 110px);}
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="app">
+    <div class="tv">TV 화면용 모드</div>
+
+    <header class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="pill">✨ 교실 랜덤 추첨기</div>
+          <h1>오늘의 당첨 학생은?</h1>
+          <div class="sub">Excel 복사 붙여넣기 OK, 한 번 뽑힌 학생은 다시 안 뽑혀요.</div>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <div class="label">남은 후보</div>
+            <div class="num" id="remainCount">0</div>
+          </div>
+          <div class="stat">
+            <div class="label">당첨자</div>
+            <div class="num" id="winnerCount">0</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel">
+        <div>
+          <div class="row">
+            <div class="section-title">학생 이름 붙여넣기</div>
+            <button class="btn secondary" id="toggleMenuBtn">📁 파일등록 메뉴</button>
+          </div>
+
+          <div class="menu" id="fileMenu">
+            <div class="row">
+              <div>
+                <div style="font-weight:900;font-size:18px;">파일로 등록하기</div>
+                <div class="tiny">txt, csv, xls, xlsx 파일을 불러올 수 있어요.</div>
+              </div>
+              <button class="btn secondary" id="closeMenuBtn">닫기</button>
+            </div>
+            <div class="actions">
+              <button class="btn primary" id="pickFileBtn">📤 파일 선택</button>
+              <div class="file-chip">최근 파일: <span id="fileName">없음</span></div>
+              <input id="fileInput" type="file" accept=".txt,.csv,.xls,.xlsx,.xlsm" class="hidden" />
+            </div>
+          </div>
+
+          <textarea id="input" class="textarea" placeholder="예시:
+김민준	이서연	박지후
+최하린
+오세진
+Excel에서 복사한 표도 그대로 붙여넣어 보세요."></textarea>
+
+          <div class="actions">
+            <button class="btn primary" id="registerBtn">👥 등록하기</button>
+            <button class="btn rose" id="drawBtn">🏆 랜덤 뽑기</button>
+            <button class="btn secondary" id="fullscreenBtn">⛶ 전체화면</button>
+            <button class="btn secondary" id="resetBtn">↺ 초기화</button>
+          </div>
+          <div style="margin-top:12px;font-size:18px;font-weight:700;opacity:.85" id="status">학생 이름을 한 번에 붙여넣고 등록하세요.</div>
+        </div>
+
+        <div style="margin-top:18px">
+          <div class="section-title">추첨 화면</div>
+          <div class="preview" id="preview">
+            <div>
+              <div class="name vertical" id="displayName">아직 추첨 전</div>
+            </div>
+          </div>
+          <div class="winner-pill hidden" id="winnerPill">🎉 당첨자: <span id="winnerName"></span></div>
+        </div>
+      </section>
+
+      <aside class="side">
+        <div class="history-box">
+          <div class="section-title">당첨된 학생</div>
+          <div class="tiny">한 번 뽑힌 학생은 아래 목록에 쌓이고, 후보에서는 빠집니다.</div>
+          <ul class="list" id="historyList">
+            <li class="list-item" style="justify-content:center;color:rgba(122,22,71,.55)">아직 당첨자가 없어요.</li>
+          </ul>
+        </div>
+
+        <div class="pool-box">
+          <div class="section-title">현재 후보</div>
+          <div class="pool" id="poolList">
+            <div class="chip" style="background:#fff;color:rgba(122,22,71,.65)">남은 학생이 없어요. 초기화하면 다시 후보로 돌아갑니다.</div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <section class="foot-grid">
+      <div class="mini-card"><div class="n">1 등록하기</div><p>이름을 붙여넣거나 파일로 불러와요.</p></div>
+      <div class="mini-card"><div class="n">2 추첨하기</div><p>카운트다운 후 이름이 빠르게 바뀝니다.</p></div>
+      <div class="mini-card"><div class="n">3 결과 확인!</div><p>당첨 시 화면 플래시와 색종이가 터집니다.</p></div>
+      <div class="mini-card"><div class="n">4 다시 추첨!</div><p>초기화 버튼으로 다시 후보에 넣을 수 있어요.</p></div>
+    </section>
+  </div>
+
+  <div class="overlay hidden" id="countdownOverlay">
+    <div class="count-card">
+      <div class="count-label">추첨 시작</div>
+      <div class="count" id="countdownText">3</div>
+    </div>
+  </div>
+
+  <div class="winner-fullscreen" id="winnerFullscreen">
+    <div class="winner-frame">
+      <div class="winner-title">🎉 당첨 🎉</div>
+      <div class="winner-big" id="bigWinner">이름</div>
+    </div>
+  </div>
+
+  <div class="flash hidden" id="flash"></div>
+  <div class="confetti hidden" id="confetti"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const els = {
+      input: $('input'),
+      status: $('status'),
+      remainCount: $('remainCount'),
+      winnerCount: $('winnerCount'),
+      displayName: $('displayName'),
+      winnerPill: $('winnerPill'),
+      winnerName: $('winnerName'),
+      winnerFullscreen: $('winnerFullscreen'),
+      bigWinner: $('bigWinner'),
+      historyList: $('historyList'),
+      poolList: $('poolList'),
+      preview: $('preview'),
+      countdownOverlay: $('countdownOverlay'),
+      countdownText: $('countdownText'),
+      flash: $('flash'),
+      confetti: $('confetti'),
+      fileInput: $('fileInput'),
+      fileName: $('fileName'),
+      fileMenu: $('fileMenu'),
+      toggleMenuBtn: $('toggleMenuBtn'),
+      closeMenuBtn: $('closeMenuBtn'),
+      pickFileBtn: $('pickFileBtn'),
+      registerBtn: $('registerBtn'),
+      drawBtn: $('drawBtn'),
+      fullscreenBtn: $('fullscreenBtn'),
+      resetBtn: $('resetBtn'),
+    };
+
+    let pool = [];
+    let history = [];
+    let spinning = false;
+    let winner = null;
+    let spinInterval = null;
+    let stopTimeout = null;
+    let countdownTimer = null;
+    let audioCtx = null;
+    let spinSoundTimer = null;
+    let tickTimer = null;
+
+    function normalizeName(name) {
+      return (name || '').trim().replace(/\\s+/g, ' ');
+    }
+
+    function parseNames(raw) {
+      return String(raw || '')
+        .split(/\\r?\\n|\\t|,|;|\\|/g)
+        .map(normalizeName)
+        .filter(Boolean);
+    }
+
+    function uniquePreserveOrder(names) {
+      const seen = new Set();
+      const out = [];
+      for (const name of names) {
+        const key = name.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          out.push(name);
+        }
+      }
+      return out;
+    }
+
+    function setStatus(text) {
+      els.status.textContent = text;
+    }
+
+    function render() {
+      els.remainCount.textContent = pool.length;
+      els.winnerCount.textContent = history.length;
+      els.displayName.textContent = winner || (spinning ? '두근두근...' : '아직 추첨 전');
+      els.displayName.className = 'name vertical';
+      els.winnerPill.classList.toggle('hidden', !winner);
+      els.winnerName.textContent = winner || '';
+      els.preview.classList.toggle('spin', spinning);
+
+      if (pool.length === 0) {
+        els.poolList.innerHTML = '<div class="chip" style="background:#fff;color:rgba(122,22,71,.65)">남은 학생이 없어요. 초기화하면 다시 후보로 돌아갑니다.</div>';
+      } else {
+        els.poolList.innerHTML = pool.map((n) => `<div class="chip">${escapeHtml(n)}</div>`).join('');
+      }
+
+      if (history.length === 0) {
+        els.historyList.innerHTML = '<li class="list-item" style="justify-content:center;color:rgba(122,22,71,.55)">아직 당첨자가 없어요.</li>';
+      } else {
+        els.historyList.innerHTML = history.map((n, idx) => `
+          <li class="list-item">
+            <span>${escapeHtml(n)}</span>
+            <span class="rank">#${history.length - idx}</span>
+          </li>
+        `).join('');
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function normalizeClipboardText(text) {
+      return uniquePreserveOrder(parseNames(text));
+    }
+
+    function addNamesToPool(names, sourceLabel) {
+      const cleaned = uniquePreserveOrder(names.map(normalizeName).filter(Boolean));
+      if (!cleaned.length) {
+        setStatus('가져올 이름이 없어요.');
+        return;
+      }
+      pool = uniquePreserveOrder([...pool, ...cleaned]);
+      setStatus(`${sourceLabel}에서 ${cleaned.length}명 등록 완료! 현재 후보 ${pool.length}명`);
+      render();
+    }
+
+    function registerNames() {
+      const parsed = uniquePreserveOrder(parseNames(els.input.value));
+      if (!parsed.length) {
+        setStatus('붙여넣은 이름이 보이지 않아요.');
+        return;
+      }
+      pool = uniquePreserveOrder([...pool, ...parsed]);
+      els.input.value = '';
+      setStatus(`${parsed.length}명 등록 완료! 현재 후보 ${pool.length}명`);
+      render();
+    }
+
+    async function readFileText(file) {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm') {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const sheet = workbook.SheetNames[0];
+        if (!sheet) return [];
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheet], { header: 1, raw: false, blankrows: false });
+        const flattened = rows.flatMap((row) => row.map((cell) => String(cell ?? '').trim()).filter(Boolean));
+        return uniquePreserveOrder(flattened);
+      }
+      const text = await file.text();
+      return normalizeClipboardText(text);
+    }
+
+    function clearTimers() {
+      if (spinInterval) clearInterval(spinInterval);
+      if (stopTimeout) clearTimeout(stopTimeout);
+      if (countdownTimer) clearInterval(countdownTimer);
+      if (spinSoundTimer) clearInterval(spinSoundTimer);
+      if (tickTimer) clearInterval(tickTimer);
+      spinInterval = null;
+      stopTimeout = null;
+      countdownTimer = null;
+      spinSoundTimer = null;
+      tickTimer = null;
+      stopAllSound();
+    }
+
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AC();
+      }
+      return audioCtx;
+    }
+
+    function tone(freq, duration, type = 'sine', gainValue = 0.05) {
+      const ctx = ensureAudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.value = gainValue;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    }
+
+    function startSpinSound() {
+      stopSpinSound();
+      spinSoundTimer = setInterval(() => tone(240 + Math.random() * 220, 0.06, 'triangle', 0.03), 120);
+    }
+
+    function startTickSound() {
+      stopTickSound();
+      tickTimer = setInterval(() => tone(1020, 0.02, 'square', 0.015), 90);
+    }
+
+    function stopSpinSound() {
+      if (spinSoundTimer) clearInterval(spinSoundTimer);
+      spinSoundTimer = null;
+    }
+
+    function stopTickSound() {
+      if (tickTimer) clearInterval(tickTimer);
+      tickTimer = null;
+    }
+
+    function stopAllSound() {
+      stopSpinSound();
+      stopTickSound();
+    }
+
+    function ding() {
+      tone(784, 0.12, 'sine', 0.08);
+      setTimeout(() => tone(988, 0.14, 'sine', 0.08), 90);
+      setTimeout(() => tone(1175, 0.18, 'sine', 0.07), 180);
+    }
+
+    function showFlash() {
+      els.flash.classList.remove('hidden');
+      setTimeout(() => els.flash.classList.add('hidden'), 560);
+    }
+
+    function showConfetti() {
+      const count = 160;
+      els.confetti.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement('span');
+        p.className = 'piece';
+        const left = Math.random() * 100;
+        const top = -12 + Math.random() * 18;
+        const size = 6 + Math.random() * 12;
+        const hue = Math.floor(Math.random() * 360);
+        const delay = Math.random() * 0.25;
+        const duration = 1.8 + Math.random() * 1.8;
+        const drift = (-220 + Math.random() * 440) + 'px';
+        const rot = Math.random() * 1080 + 'deg';
+        p.style.setProperty('--left', left + '%');
+        p.style.setProperty('--top', top + '%');
+        p.style.setProperty('--dur', duration + 's');
+        p.style.setProperty('--delay', delay + 's');
+        p.style.setProperty('--drift', drift);
+        p.style.setProperty('--rot', rot);
+        p.style.setProperty('--color', `hsl(${hue} 95% 60%)`);
+        p.style.width = size + 'px';
+        p.style.height = (size * 1.35) + 'px';
+        els.confetti.appendChild(p);
+      }
+      els.confetti.classList.remove('hidden');
+      setTimeout(() => els.confetti.classList.add('hidden'), 3600);
+    }
+
+    function startCountdown(onDone) {
+      clearTimers();
+      els.countdownOverlay.classList.remove('hidden');
+      let current = 3;
+      els.countdownText.textContent = current;
+      countdownTimer = setInterval(() => {
+        current -= 1;
+        if (current > 0) {
+          els.countdownText.textContent = current;
+        } else {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+          els.countdownOverlay.classList.add('hidden');
+          onDone();
+        }
+      }, 700);
+    }
+
+    function drawWinner() {
+      if (spinning || pool.length === 0) return;
+
+      winner = null;
+      render();
+      setStatus('두근두근 추첨 중...');
+      startCountdown(() => {
+        spinning = true;
+        setStatus('두근두근 추첨 중...');
+        startSpinSound();
+        startTickSound();
+
+        const candidates = [...pool];
+        let i = 0;
+        spinInterval = setInterval(() => {
+          els.displayName.textContent = candidates[i % candidates.length];
+          i += 1;
+        }, 65);
+
+        const spinTime = 2600 + Math.random() * 1400;
+        stopTimeout = setTimeout(() => {
+          clearTimers();
+          const pickedIndex = Math.floor(Math.random() * pool.length);
+          const picked = pool[pickedIndex];
+          pool = pool.filter((n) => n !== picked);
+          history = [picked, ...history];
+          winner = picked;
+          spinning = false;
+          els.bigWinner.textContent = picked;
+          els.winnerFullscreen.classList.add('show');
+          setStatus('당첨!');
+          showFlash();
+          ding();
+          showConfetti();
+          render();
+          setTimeout(() => els.winnerFullscreen.classList.remove('show'), 2200);
+        }, spinTime);
+      });
+    }
+
+    function resetPool() {
+      clearTimers();
+      if (history.length === 0) {
+        setStatus('초기화할 당첨자가 아직 없어요.');
+        return;
+      }
+      pool = uniquePreserveOrder([...pool, ...history]);
+      history = [];
+      winner = null;
+      spinning = false;
+      els.displayName.textContent = '초기화 완료';
+      setStatus('뽑힌 학생을 다시 후보로 돌려놨어요.');
+      render();
+    }
+
+    async function toggleFullscreen() {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        } else {
+          await document.exitFullscreen();
+        }
+      } catch {}
+    }
+
+    // wire buttons
+    els.toggleMenuBtn.onclick = () => els.fileMenu.classList.toggle('open');
+    els.closeMenuBtn.onclick = () => els.fileMenu.classList.remove('open');
+    els.pickFileBtn.onclick = () => els.fileInput.click();
+    els.fileInput.onchange = async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        const names = await readFileText(file);
+        els.fileName.textContent = file.name;
+        addNamesToPool(names, file.name);
+      } catch {
+        setStatus('파일을 읽는 데 실패했어요. txt, csv, xls, xlsx 형식을 확인해 주세요.');
+      } finally {
+        e.target.value = '';
+        els.fileMenu.classList.remove('open');
+      }
+    };
+
+    els.registerBtn.onclick = registerNames;
+    els.drawBtn.onclick = drawWinner;
+    els.resetBtn.onclick = resetPool;
+    els.fullscreenBtn.onclick = toggleFullscreen;
+    els.input.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') registerNames();
+    });
+
+    render();
+  </script>
+</body>
+</html>
